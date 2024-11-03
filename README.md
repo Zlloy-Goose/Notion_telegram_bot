@@ -19,3 +19,7 @@
   user_name = @никнейм
 	
   bot_token = ваш:токен
+
+Для работы нужна библиотека 
+
+	Python-telegram-bot
