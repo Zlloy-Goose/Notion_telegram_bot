@@ -44,7 +44,7 @@ def get_user_id() -> str:
 class SaveDate:
     """"""
     current_msg_id = None
-
+    start_msg_id = None
     last_msg_id = None
     name_table = None
     DB = None
@@ -75,48 +75,7 @@ class CustomContext(CallbackContext):
     ):
         super().__init__(application=application, chat_id=chat_id, user_id=user_id)
 
-    def save_password(self, name, text):
-        if self.chat_data.user_id == self._user_id:
-            return self.chat_data.MyDB.add_items(name_table='password', items=str(datetime.now().strftime("%Y-%m-%d")) + " "+ text[2:].strip())
-        else:
-            return "access error"
 
-    def show_password1(self, name_site, name_colns = ['site_name', 'add_name_site']):
-        if self.chat_data.user_id == self._user_id:
-            return self.chat_data.MyDB.show_items('password', name_site, name_colns=name_colns )
-        else:
-            return "access error"
-
-    def show_password(self):
-        if self.chat_data.user_id == self._user_id:
-            return  self.chat_data.MyDB.show_all_items('password')
-        else:
-            return "access error"
-
-    def password_delete(self, site_name):
-        self.chat_data.MyDB.delete_items()
-
-    def save_notion(self, text):
-        if self.chat_data.user_id == self._user_id:
-            items=[]
-            items.append(str(datetime.now().strftime("%Y-%m-%d")))
-            for _ in text.split('...'):
-                items.append(_)
-            return self.chat_data.MyDB.add_items(name_table='notion'+str(self._user_id), items=items)
-        else:
-            return "access error"
-    
-    def items_show(self, table_name, item, column_name):
-        if self.chat_data.user_id == self._user_id:
-            return self.chat_data.MyDB.show_items(name_table=table_name, item=item, name_colns=column_name)
-        else:
-            return "access error"
-        
-    def all_item_show(self, table_name):
-        if self.chat_data.user_id == self._user_id:
-            return  self.chat_data.MyDB.show_all_items('notion' + str(self._user_id))
-        else:
-            return "access error"
 
 async def delete_old_messages(update: Update, context: CustomContext):
     try:
@@ -130,7 +89,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_old_messages(update, context) 
     context.chat_data.last_msg_id = update.effective_message.id
     await delete_old_messages(update, context) 
-    context.chat_data.last_msg_id += 1
+    if context.chat_data.start_msg_id == None:
+        context.chat_data.start_msg_id = context.chat_data.last_msg_id  + 1
+    else:
+        try:
+            await context.bot.delete_message(chat_id=context.chat_data.user_id, message_id=context.chat_data.start_msg_id)
+        except BadRequest as e:
+            log(datetime.now().strftime("%m-%d %H:%M") + str(e) + "  98\n")
+        except TypeError as e:
+            log(datetime.now().strftime("%m-%d %H:%M") + str(e) + "  100\n")
+    
 
     if (context.chat_data.user_name == update.effective_user.name):
         if (context.chat_data.user_id == ''):
@@ -139,10 +107,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 s.write(f"\nuser_id = {update.effective_user.id}")
         await context.bot.send_message(chat_id=update.effective_chat.id,
                                    text = """
-  /p [site] [login] [pass] [name_site1] [add_site_name] [link - site]
-  /ps [site_name] or [] Показывает все пароли
-  /n [flag...notion]
-  /ns [notion flag] or [] """)
+/p (Сайт) (Логин) (Пароль) (Дополнительное_название_сайта) (ссылка_на_сайт) именно в такой последовательности через пробел
+/ps (название сайта) или () Показывает все пароли
+/pd (название сайта) для удаления пароля
+/n (превое слово стоит как флаг для поиска и удаления) (сама заметка)
+/ns [флаг] или []
+/nd (флаг) для удаления заметки """)
     else:
         await context.bot.send_message(update.effective_chat.id, "ERROR! Access")
         log("ERROR! Access")
