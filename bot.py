@@ -49,6 +49,7 @@ class SaveDate:
     name_table = None
     DB = None
     user_id = ''
+    date_today = ''
  
     def __init__(self):
         self.user_name = get_user_name()
@@ -112,7 +113,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /pd (название сайта) для удаления пароля
 /n (превое слово стоит как флаг для поиска и удаления) (сама заметка)
 /ns [флаг] или []
-/nd (флаг) для удаления заметки """)
+/nd (флаг) для удаления заметки
+/j прислеть файл дневника """)
     else:
         await context.bot.send_message(update.effective_chat.id, "ERROR! Access")
         log("ERROR! Access")
@@ -192,10 +194,35 @@ async def button(update: Update, context: CustomContext):
         text = context.chat_data.DB.delete_item(query.data.split(' ')[0], query.data.split(' ')[1])
         await query.edit_message_text(text)
 
+
+
 async def text_message(update: Update, context: CustomContext):
+    """сохраняет весь текст в файл и распределяет его по времени и дате"""
     await delete_old_messages(update, context) 
     context.chat_data.last_msg_id = update.effective_message.id
     await delete_old_messages(update, context) 
+    if update.effective_user.name == context.chat_data.user_name:
+        date_today = datetime.now().strftime("%Y-%m-%d")
+        with open("doc\\jornal.txt", "a",encoding='utf-8') as jornal:
+            if date_today != context.chat_data.date_today:
+                jornal.write(" ------- "+ datetime.now().strftime(date_today) + " -------  \n\n")
+                context.chat_data.date_today = date_today
+            jornal.write(datetime.now().strftime("%H:%M") + " -- " + update.effective_message.text + " \n")
+
+async def jornal_show(update: Update, context: CustomContext):
+    await delete_old_messages(update, context) 
+    context.chat_data.last_msg_id = update.effective_message.id
+    await delete_old_messages(update, context) 
+    context.chat_data.last_msg_id = update.effective_message.id + 1
+    if update.effective_user.name == context.chat_data.user_name:
+        try:
+            await context.bot.send_document(update.effective_user.id, open("doc\\jornal.txt"))
+        except FileNotFoundError:
+            log("Файл jornal.txt не найден")
+        except BadRequest as e:
+            log("222" + str(e)) 
+            
+
 
 async def notion_create(update: Update, context: CustomContext):
     await delete_old_messages(update, context) 
@@ -291,6 +318,8 @@ def main():
     myBot.add_handler(CommandHandler(['p'], save_password))
     myBot.add_handler(CommandHandler(['ps'], show_password))
     myBot.add_handler(CommandHandler(['pd'], password_delete))
+
+    myBot.add_handler(CommandHandler(['j'], jornal_show))
 
     myBot.add_handler(CallbackQueryHandler(button))
     myBot.add_handler(MessageHandler(filters.TEXT&(~filters.COMMAND), text_message))
